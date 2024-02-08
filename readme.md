@@ -1,1 +1,1 @@
-### An unofficial repo for bicubic++
+### An unofficial repo for bicubic++ (arxiv 2305.02126)
