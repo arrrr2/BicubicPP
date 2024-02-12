@@ -1,2 +1,7 @@
 *.png
 *.Identifier
+
+imgs/
+
+test*
+*.pyc

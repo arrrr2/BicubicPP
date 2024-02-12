@@ -1,0 +1,38 @@
+general:
+  scale: 3
+  m_blocks: 2
+  r_blocks: 1
+  downsampling: conv
+  activation: lrelu
+  train_image_path: /path/to/train/images
+  test_image_path: /path/to/test/images
+  image_color_channels: 3
+  padding_mode: reflect
+  crop_while_training: True
+  crop_while_testing: False
+  crop_size: 256
+  batch_size: 32
+  num_epochs: 100
+  optimizer: adam
+  learning_rate: 0.0001
+  num_workers: 4
+  seed: 42
+  model_save_path: /path/to/save/model
+  model_load_path: /path/to/load/model
+  log_path: /path/to/save/log
+  log_iters: 10
+  device: cuda
+  
+
+pretraining:
+  enabled: True
+  num_channels: 34
+
+
+prunning:
+  enabled: True
+  num_channels: 32
+
+
+bias_removal:
+  enabled: True

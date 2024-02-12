@@ -109,11 +109,47 @@ class bicubic_pp(nn.Module):
         self.up = us(scale)
 
     def forward(self, x):
-        y = self.ds(x)
-        y = self.mid(y)
+        x = self.ds(x)
+        y = self.mid(x)
+        y = y + x
         y = self.conv(y)
         y = self.up(y)
         return y
+
+class bicubic_pp_prunnable(nn.Module):
+    def __init__(self, scale=3, ch=32, ch_in=3,
+                 relu=nn.LeakyReLU(), padding_mode='reflect', bias=True):
+        super(bicubic_pp_prunnable, self).__init__()
+        self.ch_in = ch_in
+        self.conv0 = nn.Conv2d(ch_in, ch, kernel_size=3, stride=2, padding=1, padding_mode=padding_mode)
+        self.conv1 = nn.Conv2d(ch, ch, kernel_size=3, padding=1, padding_mode=padding_mode)
+        self.conv2 = nn.Conv2d(ch, ch, kernel_size=3, padding=1, padding_mode=padding_mode)
+        self.conv_out = nn.Conv2d(ch, (2*scale)**2 * ch_in, kernel_size=3, padding=1, padding_mode=padding_mode)
+        self.Depth2Space = nn.PixelShuffle(2*scale)
+        self.act = relu
+        self.mask_layer = (0, 0)
+
+
+    def forward(self, x):
+        x0 = self.conv0(x)
+        x0 = self.act(x0)
+        masks = [torch.ones_like(x0) for _ in range(2)]
+        masks[self.mask_layer[0]][:, self.mask_layer[1]] = 0.
+        x0 = x0 * masks[0]
+        x1 = self.conv1(x0)
+        x1 = self.act(x1)
+        x1 = x1 * masks[1] 
+        x2 = self.conv2(x1)
+        x2 = self.act(x2) * masks[0] + x0
+        y = self.conv_out(x2)
+        y = self.Depth2Space(y)
+        return y
+    
+    def set_mask(self, x, y):
+        self.mask_layer = (x, y)
+
+
+    
 
 net = bicubic_pp(ds='sf').cpu()
 img = torch.zeros((1, 3, 128, 128)).cpu()
