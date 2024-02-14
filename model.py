@@ -127,20 +127,22 @@ class bicubic_pp_prunnable(nn.Module):
         self.conv_out = nn.Conv2d(ch, (2*scale)**2 * ch_in, kernel_size=3, padding=1, padding_mode=padding_mode)
         self.Depth2Space = nn.PixelShuffle(2*scale)
         self.act = relu
-        self.mask_layer = (0, 0)
+        self.padding_mode = padding_mode
+        self.mask_layer = None
 
 
     def forward(self, x):
         x0 = self.conv0(x)
         x0 = self.act(x0)
         masks = [torch.ones_like(x0) for _ in range(2)]
-        masks[self.mask_layer[0]][:, self.mask_layer[1]] = 0.
+        if self.mask_layer is not None: masks[self.mask_layer[0]][:, self.mask_layer[1]] = 0.
         x0 = x0 * masks[0]
         x1 = self.conv1(x0)
         x1 = self.act(x1)
         x1 = x1 * masks[1] 
         x2 = self.conv2(x1)
-        x2 = self.act(x2) * masks[0] + x0
+        x2 = self.act(x2) + x0
+        x2 = x2 * masks[0]
         y = self.conv_out(x2)
         y = self.Depth2Space(y)
         return y
@@ -148,10 +150,33 @@ class bicubic_pp_prunnable(nn.Module):
     def set_mask(self, x, y):
         self.mask_layer = (x, y)
 
+    def remove_mask(self):
+        self.mask_layer = None
+    
+    def prune_layers(self, mask_id, prune_channels):
+
+        def prune_certain_layers(conv:nn.Conv2d, prune_channels, prune_type):
+            if prune_type == 'input':
+                conv.in_channels = conv.in_channels - len(prune_channels)  # Fix: Replace prune_channel with len(prune_channels)
+                conv.weight = nn.Parameter(torch.cat([conv.weight.data[i:i+1] for i in range(conv.in_channels) if i not in prune_channels], dim=1))
+            elif prune_type == 'output':
+                conv.out_channels = conv.out_channels - len(prune_channels)  # Fix: Replace prune_channel with len(prune_channels)
+                conv.weight = nn.Parameter(torch.cat([conv.weight.data[i:i+1] for i in range(conv.out_channels) if i not in prune_channels], dim=0))
+                if conv.bias is not None:
+                    conv.bias = nn.Parameter(torch.cat([conv.bias.data[i:i+1] for i in range(conv.out_channels) if i not in prune_channels], dim=0))
+
+        if mask_id == 0:
+            prune_certain_layers(self.conv1, prune_channels, 'input')
+            prune_certain_layers(self.conv0, prune_channels, 'output')
+            prune_certain_layers(self.conv2, prune_channels, 'output')
+
+        elif mask_id == 1:
+            prune_certain_layers(self.conv2, prune_channels, 'input')
+            prune_certain_layers(self.conv1, prune_channels, 'output')
 
     
 
-net = bicubic_pp(ds='sf').cpu()
-img = torch.zeros((1, 3, 128, 128)).cpu()
+net = bicubic_pp_prunnable().to("cuda")
+img = torch.zeros((1, 3, 128, 128)).to("cuda")
 res = net(img)
 print(res.shape)

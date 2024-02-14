@@ -31,7 +31,6 @@ class ModelHandler():
             self.prunning = self.config['prunning']['enabled']
             self.bias_removal = self.config['bias_removal']['enabled']
             self.device = self.config['general']['device']
-            self.downsampling = self.config['general']['downsampling']
             self.activation = self.config['general']['activation']
             self.seed = self.config['general']['seed']
             self.optimizer = self.config['general']['optimizer']
@@ -61,9 +60,9 @@ class ModelHandler():
         
         if self.prunning:
             self.model = bicubic_pp_prunnable(scale=self.scale, ch=self.end_channels, 
-                                ds=ds, ch_in=self.image_color_channels, relu=act, padding_mode=self.padding_mode)
+                                ch_in=self.image_color_channels, relu=act, padding_mode=self.padding_mode)
 
-        self.models['pretraining'] = self.model
+        # self.models['pretraining'] = self.model
 
 
     def set_stage(self, stage):
@@ -74,7 +73,6 @@ class ModelHandler():
 
 
     def preparation(self):
-        self.model = self.models[self.stage]
         if self.optimizer == 'adam':
             self.optim = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
         elif self.optimizer == 'sgd':
@@ -83,27 +81,27 @@ class ModelHandler():
 
 
     def train(self, train_loader):
-        self.model.train()
-        for epoch in range(self.epoch):
-            for data, target in train_loader:
-                self.optim.zero_grad()
-                output = self.model(data)
-                loss = self.criterion(output, target)
-                loss.backward()
-                self.optim.step()
-            print(f'Epoch {epoch+1}, Loss: {loss.item()}')
+        # self.model.train()
+        # for epoch in range(self.epoch):
+        #     for data, target in train_loader:
+        #         self.optim.zero_grad()
+        #         output = self.model(data)
+        #         loss = self.criterion(output, target)
+        #         loss.backward()
+        #         self.optim.step()
+        #     print(f'Epoch {epoch+1}, Loss: {loss.item()}')
         self.models[self.stage] = self.model
 
     def validation(self, val_loader):
         self.model.eval()
-        val_loss = 0
-        with torch.no_grad():
-            for data, target in val_loader:
-                output = self.model(data)
-                mse = self.criterion(output, target)
-                val_loss += self.get_psnr(mse)
-        val_loss /= len(val_loader)
-        return val_loss
+        val_psnr = 0
+        # with torch.no_grad():
+        #     for data, target in val_loader:
+        #         output = self.model(data)
+        #         mse = self.criterion(output, target)
+        #         val_loss += self.get_psnr(mse)
+        # val_psnr /= len(val_loader)
+        return val_psnr
 
     def get_psnr(self, value):
         return 10 * torch.log10(1 / value)
@@ -126,4 +124,23 @@ class ModelHandler():
         for key in list(state_dict.keys()):
             if "bias" in key:
                 del state_dict[key]
-        # ?
+
+    def set_mask(self, x, y):
+        assert isinstance(self.model, bicubic_pp_prunnable)
+        self.model.set_mask(x, y)
+
+    def channel_removal(self, mask_id, ch):
+        assert isinstance(self.model, bicubic_pp_prunnable)
+        self.model.prune_layers(mask_id, ch)
+
+    def remove_mask(self):
+        assert isinstance(self.model, bicubic_pp_prunnable)
+        self.model.remove_mask()
+    
+    def rollback_model(self):
+        if self.stage == 'prunning':
+            self.model = self.models['pretraining']
+        elif self.stage == 'bias_removal':
+            self.model = self.models['prunning'] if self.models['prunning'] is not None \
+                            else self.models['pretraining']
+
