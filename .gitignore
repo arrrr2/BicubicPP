@@ -5,3 +5,4 @@ imgs/
 
 test*
 *.pyc
+*cache*

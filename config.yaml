@@ -4,25 +4,25 @@ general:
   r_blocks: 1
   downsampling: conv
   activation: lrelu
-  train_image_path: /path/to/train/images
-  val_image_path: /path/to/val/images
-  test_image_path: /path/to/test/images
+  train_image_path: /mnt/datasets/DIV2K_train_HR_bmp/
+  val_image_path: ../datasets/DF2K_valid_HR/
+  test_image_path: ../datasets/DF2K_valid_HR/
   resize_mode: bicubic
   antialias: True
   image_color_channels: 3
   padding_mode: reflect
-  training_crop_size: 256
+  training_crop_size: 324
   validation_crop_size: 480
   test_crop_size: 0
-  batch_size: 32
-  num_epochs: 100
+  batch_size: 16
+  num_epochs: 1000
   optimizer: adam
-  learning_rate: 0.0001
-  num_workers: 4
+  learning_rate: 0.0005
+  num_workers: 16
   seed: 42
-  model_save_path: /path/to/save/model
-  model_load_path: /path/to/load/model
-  log_path: /path/to/save/log
+  model_save_path: None
+  model_load_path: None
+  log_path: None
   log_iters: 10
   device: cuda
   

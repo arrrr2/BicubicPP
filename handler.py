@@ -4,6 +4,9 @@ from model import ds_conv, ds_sf, ds_wt, bicubic_pp, bicubic_pp_prunnable
 import yaml
 import os
 import torch.nn as nn
+import tqdm
+import torchvision
+from torchvision.utils import save_image
 
 
 class ModelHandler():
@@ -59,7 +62,7 @@ class ModelHandler():
                                 ds=ds, ch_in=self.image_color_channels, relu=act, padding_mode=self.padding_mode)
         
         if self.prunning:
-            self.model = bicubic_pp_prunnable(scale=self.scale, ch=self.end_channels, 
+            self.model = bicubic_pp_prunnable(scale=self.scale, ch=self.start_channels, 
                                 ch_in=self.image_color_channels, relu=act, padding_mode=self.padding_mode)
 
         # self.models['pretraining'] = self.model
@@ -81,27 +84,34 @@ class ModelHandler():
 
 
     def train(self, train_loader):
-        # self.model.train()
-        # for epoch in range(self.epoch):
-        #     for data, target in train_loader:
-        #         self.optim.zero_grad()
-        #         output = self.model(data)
-        #         loss = self.criterion(output, target)
-        #         loss.backward()
-        #         self.optim.step()
-        #     print(f'Epoch {epoch+1}, Loss: {loss.item()}')
+        self.model.train()
+        for epoch in tqdm.tqdm(range(self.epoch)):
+            for data, target in tqdm.tqdm(train_loader, leave=False):
+                data, target = data.to(self.device), target.to(self.device)
+                self.optim.zero_grad()
+                output = self.model(data)
+                loss = self.criterion(output, target)
+                loss.backward()
+                self.optim.step()
+            # print(f'Epoch {epoch+1}, Loss: {loss.item()}')
         self.models[self.stage] = self.model
 
     def validation(self, val_loader):
         self.model.eval()
         val_psnr = 0
-        # with torch.no_grad():
-        #     for data, target in val_loader:
-        #         output = self.model(data)
-        #         mse = self.criterion(output, target)
-        #         val_loss += self.get_psnr(mse)
-        # val_psnr /= len(val_loader)
-        return val_psnr
+        with torch.no_grad():
+            for data, target in val_loader:
+                data, target = data.to(self.device, non_blocking=True), target.to(self.device, non_blocking=True)
+                output = self.model(data)
+                mse = self.criterion(output, target)
+                val_psnr += self.get_psnr(mse)
+                # Save data, target, and output tensors as PNG images
+            save_image(data, 'data.png')
+            save_image(target, 'target.png')
+            save_image(output, 'output.png')
+
+        val_psnr /= len(val_loader)
+        return val_psnr.cpu()
 
     def get_psnr(self, value):
         return 10 * torch.log10(1 / value)

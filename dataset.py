@@ -10,7 +10,7 @@ import torch.nn.functional as FF
 
 
 class ImageDataset(Dataset):
-    def __init__(self, data_dir, crop_size, resize_mode="bilinear", antialias=False, cache=False, augument=False):
+    def __init__(self, data_dir, crop_size, scale, resize_mode="bilinear", antialias=False, cache=False, augument=False, device='cpu'):
         self.data_dir = data_dir
         self.image_files = [file for file in os.listdir(data_dir) if file.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp'))]
         self.crop_size = crop_size
@@ -18,22 +18,33 @@ class ImageDataset(Dataset):
         self.antialias = antialias
         self.if_cache = cache
         self.cache = {}
+        self.scale = scale
         self.augument = augument
+        self.device = device
 
     def __len__(self):
         return len(self.image_files)
 
     def __getitem__(self, idx):
-        if self.if_cache and idx in self.cache:
+        if self.if_cache and self.cache.get(idx) is not None:
             return self.cache[idx]
         image_path = os.path.join(self.data_dir, self.image_files[idx])
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         h, w, _ = image.shape
+
+       
+
         if self.crop_size > 0:
             top = np.random.randint(0, h - self.crop_size)
             left = np.random.randint(0, w - self.crop_size)
             image = image[top:top+self.crop_size, left:left+self.crop_size]
+
+        
+        h, w, _ = image.shape
+        h = h - (h % self.scale)
+        w = w - (w % self.scale)
+        image = image[:h, :w]
 
         if self.augument:
             if np.random.rand() > 0.5:
@@ -42,11 +53,12 @@ class ImageDataset(Dataset):
                 image = np.flip(image, axis=1)
             if np.random.rand() > 0.5:
                 image = np.rot90(image)
-            
-        img = torch.from_numpy(image).to(torch.float32).permute(2, 0, 1).contiguous() 
+                
+        image = torch.from_numpy(image.copy())    
+        img = image.permute(2, 0, 1).to(torch.float32).contiguous()
 
         image_s = FF.interpolate(img.unsqueeze(0), 
-                                 scale_factor=0.5,mode=self.resize_mode, antialias=self.antialias)
+                                 scale_factor=(1/self.scale), mode=self.resize_mode, antialias=self.antialias)
 
         image = img.to(torch.float32) / 255.
         image_s = image_s.to(torch.float32) / 255.
@@ -57,6 +69,5 @@ class ImageDataset(Dataset):
         image = image.contiguous()
         image_s = image_s.contiguous()
         if self.if_cache:
-            self.cache[idx] = (image, image_s)
-        return image, image_s
-
+            self.cache[idx] = (image_s, image)
+        return image_s, image
