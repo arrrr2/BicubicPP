@@ -12,9 +12,18 @@ import yaml
 
 from dataset import ImageDataset
 from handler import ModelHandler
+import argparse
 
-# read config.yaml
-config_path = 'config.yaml'
+
+# Parse command line arguments
+parser = argparse.ArgumentParser()
+parser.add_argument('--config_path', type=str, help='Path to the config file')
+args = parser.parse_args()
+
+# Read config file
+config_path = args.config_path
+
+
 
 
 
@@ -72,7 +81,7 @@ if if_prunning:
         msak0_result.append(handler.validation(val_loader))
         handler.remove_mask()
     mask0_result = np.array(msak0_result)
-    largest_indices_mask0 = np.argsort(mask0_result)[:prunned_channel_num].tolist()
+    largest_indices_mask0 = np.argsort(mask0_result)[0-prunned_channel_num:].tolist()
     handler.channel_removal(0, largest_indices_mask0)
 
     
@@ -81,7 +90,7 @@ if if_prunning:
         mask1_result.append(handler.validation(val_loader))
         handler.remove_mask()
     mask1_result = np.array(mask1_result)
-    largest_indices_mask1 = np.argsort(mask1_result)[:prunned_channel_num].tolist()
+    largest_indices_mask1 = np.argsort(mask1_result)[0-prunned_channel_num:].tolist()
     handler.channel_removal(1, largest_indices_mask1)
     print("Results of masks:")
     print("Mask 1:", mask0_result)
