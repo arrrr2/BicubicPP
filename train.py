@@ -51,7 +51,8 @@ with open(config_path, 'r') as f:
     if_bias_removal = config['bias_removal']['enabled']
     scale = config['general']['scale']
 
-train_loader = DataLoader(ImageDataset(train_image_path, training_crop_size, scale, resize_mode=resize_mode, antialias=antialias, augument=True),
+
+train_loader = DataLoader(ImageDataset(train_image_path, training_crop_size, scale, resize_mode=resize_mode, antialias=antialias, augument=True, cache='part'),
                           batch_size=batch_size, shuffle=True, num_workers=num_workers, persistent_workers=True, pin_memory=True, )
 val_loader = DataLoader(ImageDataset(val_image_path, validation_crop_size, scale, resize_mode=resize_mode, antialias=antialias, cache=True),
                           batch_size=1, shuffle=False, num_workers=num_workers, persistent_workers=True, pin_memory=True)

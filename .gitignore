@@ -3,6 +3,7 @@
 
 imgs/
 
-test*
+# test*
 *.pyc
 *cache*
+datasets/

@@ -32,19 +32,10 @@ class ImageDataset(Dataset):
         image = cv2.imread(image_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         h, w, _ = image.shape
-
-       
-
         if self.crop_size > 0:
             top = np.random.randint(0, h - self.crop_size)
             left = np.random.randint(0, w - self.crop_size)
             image = image[top:top+self.crop_size, left:left+self.crop_size]
-
-        
-        h, w, _ = image.shape
-        h = h - (h % self.scale)
-        w = w - (w % self.scale)
-        image = image[:h, :w]
 
         if self.augument:
             if np.random.rand() > 0.5:
