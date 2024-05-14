@@ -118,11 +118,11 @@ class ModelHandler():
 
     def save(self):
         torch.save(self.models, 
-                   os.path.join(self.model_save_path, 'ckpt.pt'))
+                   os.path.join(self.model_save_path, self.model_save_path))
 
     def load(self):
         torch.load(self.models, 
-                   os.path.join(self.model_load_path, 'ckpt.pt'))
+                   os.path.join(self.model_load_path, self.model_load_path))
         
     def remove_bias(self):
         self.model = self.models['prunning'] if self.models['prunning'] is not None \

@@ -119,3 +119,5 @@ if if_bias_removal:
 
 psnr_result = handler.validation(test_loader)
 print(f'finally resulted PSNR: {psnr_result}')
+
+handler.save()
